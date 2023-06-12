@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Data parameter Desa selaawi</title>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.25/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" type="text/css" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+</head>
+
+<body>
+    <button id="tambahBtn">Tambah parameter</button>
+
+    <table id="parameterTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Suhu</th>
+                <th>Cuaca</th>
+                <th>Kelembapan</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <div id="formContainer" style="display: none;">
+        <h3>Tambah parameter</h3>
+        <form id="parameterForm">
+            <input type="hidden" id="parameterId" name="id">
+            <label for="suhu">Suhu:</label>
+            <input type="text" id="suhu" name="suhu" required>
+            <label for="cuaca">Cuaca:</label>
+            <input type="number" id="cuaca" name="cuaca" required>
+            <label for="kelembapan">Kelembapan:</label>
+            <input type="text" id="kelembapan" name="kelembapan" required>
+            <button type="submit">Simpan</button>
+            <button type="button" id="cancelBtn">Batal</button>
+        </form>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.25/js/jquery.dataTables.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <script>
+        $(document).ready(function () {
+            var dataTable = $('#parameterTable').DataTable({
+                columns: [
+                    { data: 'id' },
+                    { data: 'suhu' },
+                    { data: 'cuaca' },
+                    { data: 'kelembapan' },
+                    {
+                        data: null,
+                        render: function (data, type, row) {
+                            return '<button class="editBtn" data-id="' + data.id + '">Edit</button>' +
+                                '<button class="deleteBtn" data-id="' + data.id + '">Hapus</button>';
+                        }
+                    }
+                ]
+            });
+
+            function loadparameterData() {
+                $.ajax({
+                    url: 'http://localhost:3000/parameter',
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function (response) {
+                        dataTable.clear().rows.add(response).draw();
+                    }
+                });
+            }
+
+            loadparameterData();
+
+            $('#tambahBtn').button().click(function () {
+                $('#parameterForm')[0].reset();
+                $('#parameterId').val('');
+                $('#formContainer').show();
+            });
+
+            $('#parameterForm').submit(function (e) {
+                e.preventDefault();
+                var parameterId = $('#parameterId').val();
+                var parameterData = {
+                    suhu: $('#suhu').val(),
+                    cuaca: $('#cuaca').val(),
+                    kelembapan: $('#kelembapan').val()
+                };
+
+                var apiUrl = parameterId ? 'http://localhost:3000/parameter/' + parameterId : 'http://localhost:3000/parameter';
+
+                $.ajax({
+                    url: apiUrl,
+                    method: parameterId ? 'PUT' : 'POST',
+                    dataType: 'json',
+                    contentType: 'application/json',
+                    data: JSON.stringify(parameterData),
+                    success: function (response) {
+                        if (parameterId) {
+                            var index = dataTable.row($('button.editBtn[data-id="' + parameterId + '"]').parents('tr')).index();
+                            dataTable.row(index).data(response).draw();
+                        } else {
+                            dataTable.row.add(response).draw();
+                        }
+                        $('#formContainer').hide();
+                    }
+                });
+            });
+
+            $(document).on('click', '.editBtn', function () {
+                var parameterId = $(this).data('id');
+                var apiUrl = 'http://localhost:3000/parameter/' + parameterId;
+
+                $.ajax({
+                    url: apiUrl,
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function (response) {
+                        $('#parameterId').val(response.id);
+                        $('#suhu').val(response.suhu);
+                        $('#cuaca').val(response.cuaca);
+                        $('#kelembapan').val(response.kelembapan);
+                        $('#formContainer').show();
+                    }
+                });
+            });
+
+            $(document).on('click', '.deleteBtn', function () {
+                var parameterId = $(this).data('id');
+                var apiUrl = 'http://localhost:3000/parameter/' + parameterId;
+
+                if (confirm('Apakah Anda yakin ingin menghapus parameter ini?')) {
+                    $.ajax({
+                        url: apiUrl,
+                        method: 'DELETE',
+                        success: function (response) {
+                            var index = dataTable.row($('button.deleteBtn[data-id="' + parameterId + '"]').parents('tr')).index();
+                            dataTable.row(index).remove().draw();
+                        }
+                    });
+                }
+            });
+
+            $('#cancelBtn').button().click(function () {
+                $('#parameterForm')[0].reset();
+                $('#parameterId').val('');
+                $('#formContainer').hide();
+            });
+        });
+    </script>
+</body>
+
+</html>
